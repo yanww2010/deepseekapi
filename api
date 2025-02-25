@@ -1,0 +1,74 @@
+import requests
+import tkinter as tk
+from tkinter import scrolledtext
+
+# 配置信息
+API_URL = "https://api.siliconflow.cn/v1/chat/completions"
+API_KEY = "you api key"
+model = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+
+messages = []
+
+def chat_completion(messages):
+    """调用API获取回复"""
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 1024,
+        "response_format": {"type": "text"}
+    }
+    
+    try:
+        response = requests.post(API_URL, json=payload, headers=headers, verify=False)
+        response.raise_for_status()
+        return response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        return f"API请求失败: {str(e)}"
+
+def send_message():
+    """发送用户输入并获取 AI 回复"""
+    user_input = user_entry.get()
+    if not user_input.strip():
+        return
+    
+    chat_display.insert(tk.END, f"你: {user_input}\n", "user")
+    user_entry.delete(0, tk.END)
+    
+    messages.append({"role": "user", "content": user_input})
+    chat_display.insert(tk.END, "AI: 正在思考...\n", "assistant")
+    
+    response = chat_completion(messages)
+    messages.append({"role": "assistant", "content": response})
+    
+    chat_display.delete("end-2l", "end-1l")  # 删除 "正在思考..."
+    chat_display.insert(tk.END, f"AI: {response}\n\n", "assistant")
+    chat_display.yview(tk.END)
+
+# 创建 Tkinter 窗口
+root = tk.Tk()
+root.title("DeepSeek Chat")
+root.geometry("600x400")
+
+# 对话显示框
+chat_display = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=70, height=20)
+chat_display.pack(pady=10)
+chat_display.tag_config("user", foreground="blue")
+chat_display.tag_config("assistant", foreground="green")
+
+# 输入框和按钮
+frame = tk.Frame(root)
+frame.pack(pady=5)
+user_entry = tk.Entry(frame, width=50)
+user_entry.pack(side=tk.LEFT, padx=5)
+user_entry.bind("<Return>", lambda event: send_message())
+send_button = tk.Button(frame, text="发送", command=send_message)
+send_button.pack(side=tk.RIGHT)
+
+# 运行 Tkinter
+root.mainloop()
